@@ -1,0 +1,10 @@
+<Solution>
+  <Project Path="Sieve.Benchmarks/Sieve.Benchmarks.csproj" />
+  <Project Path="Sieve.Core/Sieve.Core.csproj" />
+  <Project Path="Sieve.Extensions/Sieve.Extensions.csproj" />
+  <Project Path="Sieve.Implementation/Sieve.Implementation.csproj" />
+  <Project Path="Sieve.Tests.Integration/Sieve.Tests.Integration.csproj" />
+  <Project Path="Sieve.Tests.Unit/Sieve.Tests.Unit.csproj" />
+  <Project Path="Sieve.Tests/Sieve.Tests.csproj" />
+  <Project Path="Sieve/Sieve.csproj" />
+</Solution>
