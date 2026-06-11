@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Sieve.Core/Sieve.Core.csproj" />
+    <Project Path="src/Sieve.Implementation/Sieve.Implementation.csproj" />
+    <Project Path="src/Sieve.Extensions/Sieve.Extensions.csproj" />
+    <Project Path="src/Sieve/Sieve.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Sieve.Tests.Unit/Sieve.Tests.Unit.csproj" />
+    <Project Path="tests/Sieve.Tests.Integration/Sieve.Tests.Integration.csproj" />
+    <Project Path="tests/Sieve.Benchmarks/Sieve.Benchmarks.csproj" />
+    <Project Path="tests/Sieve.Tests/Sieve.Tests.csproj" />
+  </Folder>
+</Solution>
