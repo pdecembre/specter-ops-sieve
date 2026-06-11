@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sieve.Core\Sieve.Core.csproj" />
+    <ProjectReference Include="..\..\src\Sieve.Implementation\Sieve.Implementation.csproj" />
   </ItemGroup>
 
 </Project>
