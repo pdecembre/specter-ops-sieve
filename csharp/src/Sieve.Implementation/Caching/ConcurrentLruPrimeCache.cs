@@ -17,6 +17,12 @@ namespace Sieve.Implementation.Caching;
 /// - Prime indices are grouped by <c>chunkKey = index / chunkSize</c>.
 /// - Each chunk stores slot values for offsets 0..chunkSize-1.
 /// - Unknown slots are represented with zero sentinel values.
+/// 
+/// Concurrency model:
+/// - Fast path (lookups and updates) relies on <see cref="ConcurrentDictionary{TKey,TValue}"/>.
+/// - Counters are maintained with <see cref="Interlocked"/> atomic operations.
+/// - Eviction is serialized behind a lightweight monitor to prevent competing
+///   trimming passes from removing too much or doing duplicate work.
 /// </summary>
 public sealed class ConcurrentLruPrimeCache : IPrimeCache
 {
@@ -33,6 +39,10 @@ public sealed class ConcurrentLruPrimeCache : IPrimeCache
 
     /// <summary>
     /// Creates a new cache instance.
+    ///
+    /// Parameters represent policy knobs:
+    /// - <paramref name="maxMemoryBytes"/> controls when eviction begins.
+    /// - <paramref name="chunkSize"/> controls granularity of storage and replacement.
     /// </summary>
     public ConcurrentLruPrimeCache(long maxMemoryBytes = 100L * 1024 * 1024, int chunkSize = 10_000)
     {
@@ -53,6 +63,7 @@ public sealed class ConcurrentLruPrimeCache : IPrimeCache
     /// <inheritdoc />
     public bool TryGetPrimeRange(long startIndex, long endIndex, out long[] primes)
     {
+        // Count every lookup attempt, including invalid ranges and misses.
         Interlocked.Increment(ref _totalRequests);
 
         if (startIndex < 0 || endIndex < startIndex)
@@ -91,6 +102,7 @@ public sealed class ConcurrentLruPrimeCache : IPrimeCache
             result[i] = prime;
         }
 
+        // Full range was resolved from cache without gaps.
         primes = result;
         Interlocked.Increment(ref _cacheHits);
         return true;
@@ -109,6 +121,7 @@ public sealed class ConcurrentLruPrimeCache : IPrimeCache
             return;
         }
 
+        // Walk the incoming span and project it chunk-by-chunk into cache entries.
         var sourceOffset = 0;
         while (sourceOffset < primes.Length)
         {
@@ -140,11 +153,14 @@ public sealed class ConcurrentLruPrimeCache : IPrimeCache
                 chunkKey,
                 _ =>
                 {
+                    // New chunk insertion increases memory budget usage.
                     Interlocked.Add(ref _currentMemoryBytes, newEntry.SizeBytes);
                     return newEntry;
                 },
                 (_, existing) =>
                 {
+                    // Merge strategy keeps existing known values and overlays
+                    // newly computed values for populated slots.
                     var merged = new long[_chunkSize];
                     Array.Copy(existing.Primes, merged, _chunkSize);
 
@@ -167,6 +183,7 @@ public sealed class ConcurrentLruPrimeCache : IPrimeCache
             sourceOffset += copyLength;
         }
 
+        // Trigger trim asynchronously so producers are not blocked by eviction work.
         if (Interlocked.Read(ref _currentMemoryBytes) > _maxMemoryBytes)
         {
             _ = Task.Run(EvictLruEntries);
@@ -205,6 +222,10 @@ public sealed class ConcurrentLruPrimeCache : IPrimeCache
 
     /// <summary>
     /// Evicts oldest-accessed entries until cache falls below 75% of max budget.
+    /// 
+    /// Why target 75% rather than exactly 100%:
+    /// creating headroom avoids repeated evict/reinsert thrashing when workload
+    /// stays near the configured memory ceiling.
     /// </summary>
     private void EvictLruEntries()
     {

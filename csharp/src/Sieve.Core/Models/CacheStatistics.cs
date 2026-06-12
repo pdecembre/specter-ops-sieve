@@ -1,9 +1,18 @@
 namespace Sieve.Core.Models;
 
 /// <summary>
-/// Immutable snapshot of cache performance metrics.
-/// Thread-safe: Yes (immutable record type).
-/// Design: Immutable Object pattern for safe sharing across threads.
+/// Immutable snapshot describing cache behavior at a single observation point.
+/// 
+/// Why immutable:
+/// 1) Producers can expose this object without additional synchronization.
+/// 2) Consumers can safely pass it across threads or persist it for diagnostics.
+/// 3) Derived values (for example <see cref="HitRatio"/>) remain stable for the
+///    lifetime of this snapshot instance.
+/// 
+/// Interpretation guidance:
+/// - <see cref="TotalRequests"/> should trend close to cache lookup activity.
+/// - <see cref="HitRatio"/> indicates reuse effectiveness (higher is better).
+/// - <see cref="MemoryUsageBytes"/> helps validate cache budget tuning.
 /// </summary>
 public sealed record CacheStatistics
 {
@@ -25,6 +34,12 @@ public sealed record CacheStatistics
     /// <summary>
     /// Gets the cache hit ratio (0.0 to 1.0).
     /// Returns 0 if no requests have been made.
+    /// 
+    /// Calculation:
+    /// hitRatio = CacheHits / TotalRequests
+    /// 
+    /// This is intentionally computed on-demand instead of stored so it always
+    /// reflects the snapshot's primitive counters.
     /// </summary>
     public double HitRatio => TotalRequests > 0 
         ? (double)CacheHits / TotalRequests 

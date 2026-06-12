@@ -1,9 +1,18 @@
 namespace Sieve.Core.Models;
 
 /// <summary>
-/// Immutable snapshot of system-wide performance metrics.
-/// Thread-safe: Yes (immutable record type).
-/// Design: Immutable Object pattern for safe metric reporting.
+/// Immutable snapshot of high-level operational counters.
+/// 
+/// Usage intent:
+/// 1) expose low-overhead observability data to logs, dashboards, and health probes,
+/// 2) avoid leaking mutable metric state across component boundaries,
+/// 3) provide lightweight derived indicators (hit ratio, average generation size)
+///    without requiring post-processing in every caller.
+/// 
+/// Consistency note:
+/// Values are point-in-time counters captured by the metrics collector. Under
+/// concurrent load, they should be treated as observability-grade signals rather
+/// than transactionally exact accounting values.
 /// </summary>
 public sealed record MetricsSnapshot
 {
@@ -35,6 +44,9 @@ public sealed record MetricsSnapshot
     /// <summary>
     /// Gets the cache hit ratio (0.0 to 1.0).
     /// Returns 0 if no requests have been made.
+    /// 
+    /// Calculation:
+    /// cacheHitRatio = CacheHits / TotalRequests
     /// </summary>
     public double CacheHitRatio => TotalRequests > 0 
         ? (double)CacheHits / TotalRequests 
@@ -43,6 +55,9 @@ public sealed record MetricsSnapshot
     /// <summary>
     /// Gets the average number of primes generated per generation call.
     /// Returns 0 if no generation calls have been made.
+    /// 
+    /// Calculation:
+    /// average = TotalPrimesGenerated / GenerationCalls
     /// </summary>
     public double AveragePrimesPerGeneration => GenerationCalls > 0 
         ? (double)TotalPrimesGenerated / GenerationCalls 

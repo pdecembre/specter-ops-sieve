@@ -4,6 +4,7 @@ using Sieve.Core.Abstractions;
 using Sieve.Core.Models;
 using Sieve.Tests.Unit.Infrastructure;
 using Xunit.Abstractions;
+using CoreISieve = Sieve.Core.Abstractions.ISieve;
 
 namespace Sieve.Tests.Unit;
 
@@ -21,7 +22,7 @@ public class InterfaceContractTests : TestBase
     public async Task ISieve_CanBeMocked()
     {
         // Arrange & Act
-        var mock = new Mock<ISieve>();
+        var mock = new Mock<CoreISieve>();
         mock.Setup(x => x.NthPrime(0)).Returns(2);
         mock.Setup(x => x.NthPrimeAsync(0, default)).ReturnsAsync(2);
         
@@ -115,7 +116,7 @@ public class InterfaceContractTests : TestBase
         // If they have XML documentation errors, compilation would fail
         
         // Arrange - Get all interface types from Sieve.Core
-        var interfaceTypes = typeof(ISieve).Assembly.GetTypes()
+        var interfaceTypes = typeof(CoreISieve).Assembly.GetTypes()
             .Where(t => t.IsInterface && t.Namespace?.StartsWith("Sieve.Core") == true)
             .ToList();
         

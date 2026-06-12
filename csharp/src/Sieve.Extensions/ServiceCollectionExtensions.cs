@@ -16,6 +16,12 @@ namespace Sieve.Extensions;
 /// 1) Stateless services are singletons (safe and allocation-friendly).
 /// 2) Cache is singleton so all requests share warm state.
 /// 3) Orchestrator is singleton facade over singleton dependencies.
+/// 
+/// Why this extension exists:
+/// - centralizes wiring decisions so application code does not replicate
+///   construction logic,
+/// - keeps test and production composition consistent,
+/// - exposes a single place to tune cache and segmentation policy.
 /// </summary>
 public static class ServiceCollectionExtensions
 {
@@ -42,6 +48,8 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
+        // Build effective runtime options once, then register as singleton so all
+        // components share the same tuned values.
         var configuration = new SieveConfiguration();
         configure(configuration);
 
@@ -79,6 +87,7 @@ public static class ServiceCollectionExtensions
             return;
         }
 
+        // Fallback logging profile for standalone/console usage.
         services.AddLogging(builder =>
         {
             builder.AddConsole();
@@ -110,7 +119,7 @@ public sealed record SieveConfiguration
     /// This is the total memory ceiling used by <see cref="ConcurrentLruPrimeCache"/>
     /// for all cached prime chunks combined.
     /// </summary>
-    public long MaxCacheMemoryBytes { get; init; } = 100L * 1024 * 1024;
+    public long MaxCacheMemoryBytes { get; set; } = 100L * 1024 * 1024;
 
     /// <summary>
     /// Number of prime indices grouped into a cache chunk.
@@ -121,7 +130,7 @@ public sealed record SieveConfiguration
     /// Raw payload size = 10,000 * 8 bytes = 80,000 bytes = 78.125 KB, not counting
     /// object/array overhead. This value controls chunk granularity, not the total cache budget.
     /// </summary>
-    public int CacheChunkSize { get; init; } = 10_000;
+    public int CacheChunkSize { get; set; } = 10_000;
 
     /// <summary>
     /// Segment width (in integer values) for segmented sieve processing.
@@ -134,5 +143,5 @@ public sealed record SieveConfiguration
     /// array overhead. This value controls the size of the working window used during
     /// segmentation.
     /// </summary>
-    public int SegmentSize { get; init; } = 1024 * 1024;
+    public int SegmentSize { get; set; } = 1024 * 1024;
 }

@@ -18,6 +18,12 @@ namespace Sieve.Implementation;
 /// Thread-safety:
 /// - Delegates mutable behavior to thread-safe dependencies.
 /// - Contains no mutable shared state except constants.
+/// 
+/// Error-handling policy:
+/// - Validation errors propagate directly (for example negative index input).
+/// - Cancellation propagates unchanged for cooperative callers.
+/// - Other unexpected failures are wrapped in <see cref="PrimeComputationException"/>
+///   so callers can reliably distinguish computation failures from input issues.
 /// </summary>
 public sealed class SieveOrchestrator : ISieve
 {
@@ -49,12 +55,15 @@ public sealed class SieveOrchestrator : ISieve
     /// <inheritdoc />
     public long NthPrime(long n)
     {
+        // Sync-over-async facade for compatibility with original API shape.
+        // The underlying async path remains the single implementation source.
         return NthPrimeAsync(n, CancellationToken.None).GetAwaiter().GetResult();
     }
 
     /// <inheritdoc />
     public async Task<long> NthPrimeAsync(long n, CancellationToken cancellationToken = default)
     {
+        // Input contract check: public nth-prime API uses 0-based non-negative indices.
         if (n < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(n), "Index must be non-negative.");
@@ -73,6 +82,8 @@ public sealed class SieveOrchestrator : ISieve
 
             _metricsCollector.RecordCacheMiss();
 
+            // Determine incremental generation window.
+            // We only request missing range beyond the highest cached index.
             var highestCachedIndex = _cache.GetHighestCachedIndex();
             var generationStart = Math.Max(0, highestCachedIndex + 1);
             var generationEnd = checked(n + CalculateBufferSize(n));
@@ -88,12 +99,14 @@ public sealed class SieveOrchestrator : ISieve
                 n,
                 estimatedUpperBound);
 
+            // Strategy selection is based on request magnitude.
             var generator = SelectGenerator(n);
             var generated = await generator.GeneratePrimesAsync(generationStart, generationEnd, cancellationToken);
 
             _metricsCollector.RecordGeneration(generated.LongLength);
             _cache.AddPrimeRange(generationStart, generated);
 
+            // Translate absolute requested index into generated window offset.
             var offset = n - generationStart;
             if (offset < 0 || offset >= generated.LongLength)
             {
@@ -123,6 +136,10 @@ public sealed class SieveOrchestrator : ISieve
 
     private static long CalculateBufferSize(long n)
     {
+        // Simple adaptive prefetch heuristic:
+        // - small requests use fixed warm-up window,
+        // - medium requests use proportional look-ahead,
+        // - large requests cap look-ahead for bounded memory/time overhead.
         if (n < 1_000)
         {
             return 1_000;

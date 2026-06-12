@@ -1,8 +1,19 @@
 namespace Sieve.Core.Exceptions;
 
 /// <summary>
-/// Thrown when prime computation fails due to algorithm errors or resource constraints.
-/// Includes the requested index for debugging purposes.
+/// Exception raised when a prime-number computation could not be completed.
+/// 
+/// Typical scenarios:
+/// 1) A generation algorithm fails unexpectedly.
+/// 2) A computed range does not contain the requested index (internal contract violation).
+/// 3) Resource pressure or other execution failures occur while generating primes.
+/// 
+/// This type is intentionally different from <see cref="PrimeValidationException"/>:
+/// - validation exception = caller supplied invalid input.
+/// - computation exception = input was valid, but the computation pipeline failed.
+/// 
+/// The <see cref="RequestedIndex"/> property is included so logs and telemetry can
+/// correlate the failure to the exact nth-prime request that triggered it.
 /// </summary>
 public class PrimeComputationException : SieveException
 {

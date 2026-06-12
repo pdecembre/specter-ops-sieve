@@ -4,6 +4,20 @@ namespace Sieve.Implementation.Estimation;
 
 /// <summary>
 /// Estimates upper bounds for the Nth prime using the Rosser-Schoenfeld inequality.
+/// 
+/// Mathematical context:
+/// - Prime density decreases as values grow, but not arbitrarily fast.
+/// - Rosser-Schoenfeld provides an explicit, practical upper bound:
+///   p(n) &lt; n * (ln(n) + ln(ln(n))) for n &gt;= 6 (with 1-based n).
+/// - This bound is suitable for sizing sieve arrays before generation starts.
+/// 
+/// Why this estimator exists in architecture:
+/// 1) generation strategies need a value-space limit before they can mark composites,
+/// 2) over-estimation is acceptable (more work), under-estimation is unsafe
+///    (requested prime might not be included),
+/// 3) isolating estimation behind <see cref="IEstimator"/> keeps algorithms
+///    pluggable and testable.
+/// 
 /// Thread-safe: Yes (stateless, immutable behavior).
 /// Formula: p(n) < n * (ln(n) + ln(ln(n))) for n >= 6 (1-based n).
 ///
@@ -19,8 +33,8 @@ namespace Sieve.Implementation.Estimation;
 public sealed class RosserSchoenfeldEstimator : IEstimator
 {
     // Exact values for the earliest indices where direct lookup is simpler and fully precise.
-    // These values also bypass log/log-log domain edge handling for small n.
-    private static readonly long[] SmallPrimeUpperBounds = { 2, 3, 5, 7, 11, 13 };
+    // These values -- known primes up to 6 -- also bypass log/log-log domain edge handling for small n.
+    private static readonly long[] SmallPrimeUpperBounds = {2, 3, 5, 7, 11, 13};
 
     // Conservative buffer on top of formula output to avoid tight-bound edge failures.
     // 1.05 means +5% headroom.
@@ -37,14 +51,14 @@ public sealed class RosserSchoenfeldEstimator : IEstimator
         }
 
         // Small-n fast path:
-        // For the first six prime indices, return exact known values.
+        // For the first 6 prime indices, return exact known values.
         // This keeps behavior deterministic and removes dependency on inequality fit in this range.
         if (n < SmallPrimeUpperBounds.Length)
         {
             return SmallPrimeUpperBounds[n];
         }
 
-        // Convert external 0-based index to mathematical 1-based index.
+        // Convert the 0-based prime index to the 1-based "n" the formula expects (index 0 -> 1st prime, n=1).
         var oneBasedIndex = n + 1.0;
 
         // Compute ln(n) and ln(ln(n)) terms from Rosser-Schoenfeld.

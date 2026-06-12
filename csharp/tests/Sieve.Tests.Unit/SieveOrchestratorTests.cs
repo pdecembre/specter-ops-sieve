@@ -8,6 +8,7 @@ using Sieve.Implementation.Generation;
 using Sieve.Implementation.Metrics;
 using Sieve.Tests.Unit.Infrastructure;
 using Xunit.Abstractions;
+using CoreISieve = Sieve.Core.Abstractions.ISieve;
 
 namespace Sieve.Tests.Unit;
 
@@ -63,7 +64,7 @@ public sealed class SieveOrchestratorTests : TestBase
         action.Should().Throw<ArgumentOutOfRangeException>();
     }
 
-    private static ISieve CreateSut()
+    private static CoreISieve CreateSut()
     {
         var estimator = new RosserSchoenfeldEstimator();
         return new SieveOrchestrator(
