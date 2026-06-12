@@ -93,9 +93,9 @@ public static class PrimeValidator
     /// <returns>True if candidates represent consecutive prime numbers; otherwise false.</returns>
     public static bool AreConsecutivePrimes(ReadOnlySpan<long> candidates)
     {
-        // Vacuous truth for empty input:
-        // there is no candidate that violates primality or adjacency constraints.
-        // This behavior is useful in pipelines where empty batches are valid artifacts.
+        // Empty input is treated as valid.
+        // There are no values to check, so none can break the rules.
+        // This is useful when a pipeline can legitimately produce an empty batch.
         if (candidates.Length == 0)
         {
             return true;
@@ -119,8 +119,8 @@ public static class PrimeValidator
                 continue;
             }
 
-            // Rule 2: strict monotonicity.
-            // Equal or descending values violate the natural ordering of primes.
+            // Rule 2: values must strictly increase.
+            // Each value must be greater than the previous one (no repeats, no going backward).
             if (candidates[i] <= candidates[i - 1])
             {
                 return false;
